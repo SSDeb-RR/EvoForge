@@ -1,6 +1,0 @@
-interface:
-  display_name: "EvoForge RSI"
-  short_description: "Evolve Metric Forge from reviewed work evidence"
-  default_prompt: "Use $skill-evolution to analyze this conversation for a generalizable, validation-backed Metric Forge improvement."
-policy:
-  allow_implicit_invocation: false
