@@ -1,65 +1,188 @@
 # EvoForge
 
-**Evidence-grounded evolution for agent harnesses.**
+> **Evidence-grounded evolution for deterministic evaluator engineering.**
 
-EvoForge is a human-controlled meta-harness that learns from real engineering experience to improve deterministic evaluator-building workflows.
+EvoForge is a human-supervised package for building and improving deterministic
+evaluators for conversational and voice-agent systems. It pairs two harnesses:
 
-## What is included
-
-| Harness | Role |
+| Harness | Purpose |
 |---|---|
-| **Metric Forge** (`deterministic-metric-engineering`) | Builds, audits, debugs, and optimizes deterministic Python evaluators and their regression suites from metric definitions, transcript data, and existing code. |
-| **EvoForge RSI** (`skill-evolution`) | Reviews a manually supplied work conversation, attributes the cause, extracts a reusable lesson, stages a minimal improvement to Metric Forge, independently validates it, and requires explicit approval before applying it. |
+| **Metric Forge** | Converts metric definitions, transcripts, labels, code, and tests into deterministic Python evaluators with regression coverage. |
+| **EvoForge RSI** | Extracts reusable engineering lessons from selected agent-session transcripts and evolves Metric Forge through validation-gated, human-approved deltas. |
 
-The meta-harness is the center of this repository. Metric Forge is its first
-concrete target and the only target supported in V1.
+## Motivation
 
-## The core loop
+Converting an LLM judge, broad heuristic, or informal business rule into a
+deterministic evaluator is iterative engineering. Definitions are incomplete,
+labels can be wrong, transcripts reveal linguistic variation, parsers encode
+assumptions, and a local false-positive fix can create a regression.
+
+Metric Forge addresses the evaluator itself. EvoForge RSI addresses the
+engineering procedure used to build evaluators. It asks not “how do we patch
+this metric?”, but “does this session reveal a missing reusable capability in
+the evaluator-engineering harness?”
 
 ```text
-Real engineering conversation
+Metric definition + transcripts + implementation
         ↓
-Evidence and cause attribution
+Metric Forge → deterministic evaluator + evidence + regressions
         ↓
-Reusable lesson or do-not-evolve decision
+Selected engineering-session transcript
         ↓
-Minimal staged Metric Forge change
-        ↓
-Fresh A/B behavioral evaluation
-        ↓
-Human review and explicit local application
+EvoForge RSI → lesson → staged delta → A/B validation → explicit approval
 ```
 
-Nothing is changed merely because an evaluator was wrong. A parser bug,
-ambiguous metric definition, missing data, or agent execution mistake may be
-recorded without changing the reusable harness.
+## What it enables
 
-## Start here
+### Metric Forge
 
-1. Read [installation](docs/INSTALL.md) and install both harnesses in Codex,
-   Claude Code, or one of each.
-2. Confirm discovery from the installed EvoForge RSI directory:
+- Audits labels before treating them as ground truth.
+- Prefers normalization, role-aware pattern families, event extraction,
+  finite-state logic, and deterministic temporal reasoning over LLM judging.
+- Separates historical context, customer requests, agent proposals, rejections,
+  acceptance, confirmation, and non-applicable cases.
+- Produces structured evidence with the production result.
+- Builds regression suites from all supplied calls plus targeted edge cases.
+- Supports multilingual conversational evidence when the data requires it,
+  including English, Hindi, and Hinglish variants.
 
-   ```bash
-   python scripts/evolve.py target
-   ```
+### EvoForge RSI
 
-3. Use Metric Forge for evaluator work.
-4. When a conversation contains reusable learning, explicitly invoke
-   `$skill-evolution` with the transcript or export.
-5. Follow the next action shown by the harness. A pending proposal will always
-   say whether it needs A/B evaluation, review, more evidence, rejection, or
-   explicit deployment approval.
+- Ingests JSON, Markdown, plain text, pasted chat, transcript files, and
+  partially structured session exports.
+- Preserves raw hashes, normalized message locators, lessons, proposal diffs,
+  validation records, snapshots, and append-only lineage.
+- Attributes a failure before evolving: target-harness deficiency, execution
+  mistake, metric-specific edge case, ambiguity, missing evidence, environment,
+  or regression gap.
+- Records `do_not_evolve` decisions when the reusable harness should not change.
+- Stages the smallest target `SKILL.md` delta without editing the live target.
+- Requires fresh blinded A/B outputs and an evidence-bearing validation gate.
+- Explains pending states and asks the user to review, evaluate, reject, or
+  explicitly apply; it never auto-applies a change.
 
-See [usage](docs/USAGE.md), [architecture](docs/ARCHITECTURE.md), and
-[publishing notes](docs/PUBLISHING.md).
+## Installation
 
-## Boundaries
+EvoForge contains two directories:
 
-- V1 targets only the included deterministic evaluator-engineering harness.
-- It supports arbitrary conversation-export formats, but does not upload them.
-- It is manually invoked; there is no daemon, webhook, scheduler, or automatic
-  skill mutation.
-- It stages and validates before application; it never auto-applies or merges.
-- Generated evidence and lessons are local state and are intentionally ignored
-  by this distribution.
+```text
+harnesses/metric-forge/  → install as deterministic-metric-engineering
+harnesses/evoforge-rsi/  → install as skill-evolution
+```
+
+This guide means **Claude Code**, not Google Cloud Code.
+
+### macOS — Codex
+
+```bash
+mkdir -p ~/.codex/skills
+cp -R harnesses/metric-forge ~/.codex/skills/deterministic-metric-engineering
+cp -R harnesses/evoforge-rsi ~/.codex/skills/skill-evolution
+cd ~/.codex/skills/skill-evolution
+python scripts/evolve.py target
+```
+
+### macOS — Claude Code
+
+```bash
+mkdir -p ~/.claude/skills
+cp -R harnesses/metric-forge ~/.claude/skills/deterministic-metric-engineering
+cp -R harnesses/evoforge-rsi ~/.claude/skills/skill-evolution
+cd ~/.claude/skills/skill-evolution
+python scripts/evolve.py target
+```
+
+### Windows — Codex
+
+```powershell
+$skills = Join-Path $env:USERPROFILE ".codex\skills"
+New-Item -ItemType Directory -Force -Path $skills
+Copy-Item -Recurse harnesses\metric-forge (Join-Path $skills "deterministic-metric-engineering")
+Copy-Item -Recurse harnesses\evoforge-rsi (Join-Path $skills "skill-evolution")
+Set-Location (Join-Path $skills "skill-evolution")
+python scripts\evolve.py target
+```
+
+### Windows — Claude Code
+
+```powershell
+$skills = Join-Path $env:USERPROFILE ".claude\skills"
+New-Item -ItemType Directory -Force -Path $skills
+Copy-Item -Recurse harnesses\metric-forge (Join-Path $skills "deterministic-metric-engineering")
+Copy-Item -Recurse harnesses\evoforge-rsi (Join-Path $skills "skill-evolution")
+Set-Location (Join-Path $skills "skill-evolution")
+python scripts\evolve.py target
+```
+
+The two harnesses may be installed in different products. EvoForge RSI searches
+both Codex and Claude Code local skill roots for Metric Forge. If two copies
+exist, select one explicitly with `SKILL_EVOLUTION_TARGET`.
+
+## Usage
+
+Build or optimize an evaluator:
+
+```text
+Use $deterministic-metric-engineering to audit the supplied labels, implement
+this conversational metric deterministically, preserve the output contract, and
+add regression coverage from all supplied calls plus targeted edge cases.
+```
+
+Evolve the reusable evaluator-engineering harness:
+
+```text
+Use $skill-evolution to analyze this agent-session transcript for a reusable
+improvement to the deterministic evaluator-engineering harness. Create and
+validate any justified proposal, show review artifacts, and stop before deployment.
+```
+
+Artifacts remain local under `evolution/`: raw/normalized sessions, lessons,
+pending/accepted/rejected proposals, A/B evaluations, regression records,
+snapshots, and append-only history. `python scripts/evolve.py status` reports
+the current state and the next required user action.
+
+## Relationship to SkillOpt and SkillOps
+
+| Dimension | EvoForge | SkillOpt | SkillOps |
+|---|---|---|---|
+| Target | Deterministic conversational evaluator engineering | General text-space skill optimization | Skill-library operations and lifecycle management |
+| Evidence | Human-selected real engineering sessions | Scored rollouts and benchmark splits | Contracts, validators, artifacts, thresholds |
+| Generalization | Cause attribution, novelty search, bounded lesson | Optimizer reflection and bounded edit selection | Typed contracts and maintenance actions |
+| Promotion | Fresh A/B validation plus explicit human approval | Held-out validation/selection | Versioned, threshold-gated lifecycle |
+| Runtime posture | Local and manually triggered | Research optimizer / optional session review | Broader control-loop framework |
+
+[SkillOpt](https://github.com/microsoft/SkillOpt) treats a skill document as a
+trainable external parameter and optimizes it using rollout/reflection/edit/gate
+cycles. EvoForge borrows bounded edits and validation-gated adoption, but starts
+from a human-selected engineering session, requires causal attribution, allows a
+durable `do_not_evolve` outcome, and remains specialized to evaluator
+engineering.
+
+SkillOps emphasizes explicit contracts, validators, failure modes, lineage, and
+maintenance actions. EvoForge shares its auditability discipline but avoids a
+full manifest graph or autonomous control-loop runtime. Its distinctive bridge
+is: session evidence → generalized engineering lesson → minimal validated delta.
+
+## Research framing
+
+EvoForge couples task-level adaptation (build a deterministic evaluator) with
+process-level adaptation (improve the reusable engineering harness). Every
+accepted change is traceable:
+
+```text
+session evidence → experience event → attribution → lesson
+→ proposal → validation → applied successor
+```
+
+## Privacy and publication
+
+Publish only an empty `evolution/` skeleton. Session exports, lessons,
+proposals, evaluator outputs, snapshots, and history are local operational data
+and should be ignored by Git. Choose a license and review the package for
+private transcripts, credentials, and local paths before release.
+
+## References
+
+- Microsoft SkillOpt: <https://github.com/microsoft/SkillOpt>
+- SkillOpt docs: <https://microsoft.github.io/SkillOpt/>
+- SkillOps paper: <https://arxiv.org/abs/2605.13716>
