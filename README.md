@@ -2,13 +2,7 @@
 
 **Evidence-grounded evolution for agent harnesses.**
 
-EvoForge is a small, human-controlled package for turning real human-and-agent
-work into carefully validated improvements to a reusable harness. It does not
-continuously watch conversations, mutate itself autonomously, or treat every
-failure as a reason to rewrite instructions.
-
-This first release applies the approach to deterministic evaluator engineering
-for conversational and voice-agent transcripts.
+EvoForge is a human-controlled meta-harness that learns from real engineering experience to improve deterministic evaluator-building workflows.
 
 ## What is included
 
