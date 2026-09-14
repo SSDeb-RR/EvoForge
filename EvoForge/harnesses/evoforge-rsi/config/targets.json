@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "default_target": "deterministic-metric-engineering",
+  "targets": {
+    "deterministic-metric-engineering": {
+      "skill_file": "SKILL.md",
+      "directory_names": [
+        "deterministic-metric-engineering",
+        "deterministic_metric_engineering_skill"
+      ],
+      "search_roots": [
+        "~/.codex/skills",
+        "~/.claude/skills"
+      ]
+    }
+  }
+}
