@@ -9,8 +9,10 @@ good repository slug is `evoforge`). No Git repository or remote is included.
    The package deliberately does not invent a legal license on your behalf.
 2. Confirm that `harnesses/evoforge-rsi/evolution/` contains only the empty
    skeleton and no real conversation evidence.
-3. Review `docs/INSTALL.md` on the platforms you intend to support.
-4. Optionally replace the generic repository links once your GitHub URL exists.
+3. Confirm no local `~/.evoforge` memory, transcripts, or generated experience
+   records were copied into the repository.
+4. Review `docs/INSTALL.md` on the platforms you intend to support.
+5. Optionally replace the generic repository links once your GitHub URL exists.
 
 ## GitHub web workflow
 

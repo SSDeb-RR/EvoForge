@@ -7,9 +7,10 @@ platform.
 Metric Forge
   metric definition + conversational data + code/tests
   → deterministic evaluator + regressions
+  → selected structured experiences in persistent local memory
 
 EvoForge RSI
-  selected work conversation + Metric Forge + local ledger
+  accumulated experiences and/or selected work conversation + Metric Forge + local ledger
   → attribution → generalized lesson → staged delta → A/B gate → explicit apply
 ```
 
@@ -23,11 +24,17 @@ extend this package without weakening the V1 boundary.
 
 ## Local data and privacy
 
-The repository contains an empty ledger skeleton only. Each installation writes
-its own data beside the installed EvoForge RSI harness by default, or at the
-directory named by `SKILL_EVOLUTION_DATA`. Raw conversations may contain
-sensitive data; users should decide whether to retain, redact, back up, or
-delete their own local ledger.
+The repository contains an empty evolution-ledger skeleton only. Metric Forge
+writes structured experiences to `~/.evoforge/memory/` by default, or the root
+named by `EVOFORGE_MEMORY_DIR`. EvoForge RSI writes proposal and lineage data
+beside its installed harness by default, or under `SKILL_EVOLUTION_DATA`.
+Records remain inspectable local JSON/JSONL; users control retention, redaction,
+backup, and deletion.
+
+Memory accumulation is not autonomous evolution. Metric Forge records compact
+engineering evidence best-effort. EvoForge RSI reads it only after explicit
+invocation and retains the existing attribution, transfer-validation, and
+human-approval gates.
 
 ## Cross-product target discovery
 

@@ -30,7 +30,10 @@ For each event answer:
 
 Classify as A only when the current skill lacks sufficiently actionable guidance
 for the demonstrated decision. Repetition strengthens evidence but does not
-convert an execution mistake into a skill deficiency automatically.
+convert an execution mistake into a skill deficiency automatically. Likewise,
+multiple records from one metric do not constitute independent cross-family
+evidence. Preserve their metric, metric-family, and session scope while testing
+whether the mechanism transfers.
 
 ## Generalization test
 
@@ -58,4 +61,3 @@ metric-specific phrase, regex, exception, entity, date, or anecdote.
 
 Confidence is not the validation decision. A high-confidence lesson can still
 fail regression; a medium-confidence lesson can be staged for more evidence.
-

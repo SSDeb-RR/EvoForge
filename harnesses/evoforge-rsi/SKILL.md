@@ -1,12 +1,12 @@
 ---
 name: skill-evolution
 description: >
-  Manually analyze human-and-LLM work conversations for reusable lessons that
-  may improve an existing agent skill. Use only when explicitly invoked to
-  ingest conversation evidence, distinguish skill gaps from execution or
-  task-specific failures, stage a minimal skill delta, validate it, and record
-  an auditable local evolution history. Do not use for ordinary task fixes or
-  automatic self modification.
+  Manually analyze accumulated Metric Forge experiences or supplied
+  human-and-LLM work conversations for reusable lessons that may improve the
+  deterministic metric-engineering harness. Use only when explicitly invoked
+  to attribute evidence, stage and validate a minimal skill delta, and record
+  auditable local lineage. Do not use for ordinary metric fixes or automatic
+  self modification.
 ---
 
 # Skill Evolution
@@ -35,6 +35,7 @@ Resolve this skill's directory, then invoke its helper as:
 ```bash
 python scripts/evolve.py status
 python scripts/evolve.py target
+python scripts/evolve.py memory retrieve --limit 50
 python scripts/evolve.py ingest /path/to/conversation
 ```
 
@@ -48,9 +49,9 @@ lesson drafting, delta design, and scenario assessment.
 Follow these phases in order. Read [the detailed workflow](references/workflow.md)
 before conducting an evolution run.
 
-1. Ingest the provided conversation file or pasted text. For pasted text, save
-   the exact content to a temporary file and ingest it. Never require the user
-   to reformat it.
+1. Retrieve locally accumulated Metric Forge experiences. If the user also
+   provides a conversation file or pasted text, ingest it; for pasted text,
+   save the exact content to a temporary file first. Never require reformatting.
 2. Inspect the normalized conversation, the entire current target skill, related
    files, target hash, prior lessons, proposals, rejections, and regressions.
 3. Extract only evidence-backed experience events with exact source locators.
@@ -111,6 +112,10 @@ instruction or capability gap. Record but do not generalize:
 Read [the attribution and generalization rubric](references/attribution-and-generalization.md)
 whenever deciding whether an event warrants evolution.
 
+Read [local memory guidance](references/memory.md) before retrieving or
+importing accumulated experience. A repeated metric-specific pattern is not
+automatically a generalized Metric Forge lesson.
+
 ## Artifact rules
 
 - Raw inputs are immutable local evidence. Preserve source bytes and SHA-256.
@@ -127,6 +132,8 @@ whenever deciding whether an event warrants evolution.
 
 ```bash
 python scripts/evolve.py ingest INPUT
+python scripts/evolve.py memory retrieve --limit 50
+python scripts/evolve.py memory import MEMORY_EXPERIENCE_ID
 python scripts/evolve.py lesson EXPERIENCE_ID --from LESSON.json
 python scripts/evolve.py stage LESSON_ID --candidate CANDIDATE_SKILL.md
 python scripts/evolve.py evaluate-prepare PROPOSAL_ID --scenario TRIGGER.json --scenario TRANSFER.json

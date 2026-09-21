@@ -11,7 +11,7 @@ and append-only history events.
   "schema_version": 1,
   "conversation_id": "exp-...",
   "source": {
-    "kind": "json|markdown|text|unknown",
+    "kind": "json|markdown|text|unknown|local_memory",
     "original_path": "/absolute/path/or/null",
     "stored_path": "evolution/experiences/raw/...",
     "sha256": "...",
@@ -30,6 +30,10 @@ and append-only history events.
   }]
 }
 ```
+
+For `local_memory`, metadata also preserves `metric_slug`, `metric_family`,
+`event_type`, `scope`, `confidence`, `pattern_keys`, evidence locators, and
+source artifacts from the Metric Forge record.
 
 ## Candidate lesson
 
@@ -88,4 +92,3 @@ initial `pending` status. Do not hand-edit it.
 
 See [validation.md](validation.md). The helper stores the submitted assessment,
 deterministic checks, decision, hashes, and timestamp as an immutable run.
-

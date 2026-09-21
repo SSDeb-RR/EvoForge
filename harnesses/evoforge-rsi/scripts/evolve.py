@@ -20,6 +20,7 @@ from typing import Any, Iterable
 SKILL_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = Path(os.environ.get("SKILL_EVOLUTION_DATA", SKILL_DIR / "evolution"))
 TARGETS_FILE = Path(os.environ.get("SKILL_EVOLUTION_TARGETS", SKILL_DIR / "config" / "targets.json"))
+MEMORY_ROOT = Path(os.environ.get("EVOFORGE_MEMORY_DIR", Path.home() / ".evoforge" / "memory"))
 ROLE_ALIASES = {
     "human": "user", "customer": "user", "user": "user",
     "assistant": "assistant", "agent": "assistant", "ai": "assistant",
@@ -100,6 +101,147 @@ def ensure_layout() -> None:
         "evaluations/completed", "snapshots", "history",
     ):
         (DATA_DIR / relative).mkdir(parents=True, exist_ok=True)
+
+
+def read_memory_jsonl(path: Path) -> tuple[list[dict[str, Any]], list[str]]:
+    """Read producer memory while isolating individual damaged lines."""
+    if not path.exists():
+        return [], []
+    records: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as exc:
+            warnings.append(f"Skipped malformed memory line {line_number}: {exc.msg}")
+            continue
+        if not isinstance(record, dict):
+            warnings.append(f"Skipped non-object memory line {line_number}")
+            continue
+        records.append(record)
+    return records, warnings
+
+
+def retrieve_memory(
+    skill_name: str | None = None, query: str = "", limit: int = 50,
+    memory_root: Path | None = None,
+) -> dict[str, Any]:
+    """Retrieve recent metric-engineering experiences for the fixed target."""
+    if limit < 1:
+        raise EvolutionError("Memory retrieval limit must be positive")
+    if skill_name is None:
+        skill_name = target_status()["target"]
+    root = Path(memory_root) if memory_root is not None else MEMORY_ROOT
+    path = root / skill_name / "experiences.jsonl"
+    records, warnings = read_memory_jsonl(path)
+    records = [row for row in records if row.get("skill_name") in {None, skill_name}]
+    terms = [term.casefold() for term in query.split() if term.strip()]
+    if terms:
+        scored: list[tuple[int, dict[str, Any]]] = []
+        for row in records:
+            haystack = json.dumps(row, ensure_ascii=False, sort_keys=True).casefold()
+            score = sum(haystack.count(term) for term in terms)
+            if score:
+                scored.append((score, row))
+        scored.sort(key=lambda item: (item[0], item[1].get("created_at", "")), reverse=True)
+        records = [row for _, row in scored]
+    else:
+        records.sort(key=lambda row: row.get("created_at", ""), reverse=True)
+    selected = records[:limit]
+    grouped: dict[str, list[str]] = {}
+    for row in selected:
+        for key in row.get("pattern_keys", []):
+            grouped.setdefault(str(key), []).append(str(row.get("experience_id")))
+    recurring = [
+        {"pattern_key": key, "count": len(ids), "experience_ids": ids}
+        for key, ids in sorted(grouped.items()) if len(ids) > 1
+    ]
+    scope_counts: dict[str, int] = {}
+    event_type_counts: dict[str, int] = {}
+    for row in selected:
+        scope = str(row.get("scope", {}).get("kind", "session"))
+        event_type = str(row.get("event_type", "other"))
+        scope_counts[scope] = scope_counts.get(scope, 0) + 1
+        event_type_counts[event_type] = event_type_counts.get(event_type, 0) + 1
+    return {
+        "skill_name": skill_name,
+        "memory_path": str(path),
+        "available": path.exists(),
+        "matched_count": len(records),
+        "returned_count": len(selected),
+        "query": query,
+        "scope_counts": scope_counts,
+        "event_type_counts": event_type_counts,
+        "recurring_patterns": recurring,
+        "warnings": warnings,
+        "experiences": selected,
+    }
+
+
+def import_memory_experience(experience_id: str, memory_root: Path | None = None) -> dict[str, Any]:
+    """Materialize one structured memory record into the evolution ledger."""
+    ensure_layout()
+    target_name = target_status()["target"]
+    retrieved = retrieve_memory(target_name, limit=100000, memory_root=memory_root)
+    record = next((row for row in retrieved["experiences"] if row.get("experience_id") == experience_id), None)
+    if record is None:
+        raise EvolutionError(f"Memory experience not found for target {target_name}: {experience_id}")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", experience_id):
+        raise EvolutionError("Memory experience ID contains unsafe characters")
+    destination = DATA_DIR / "experiences" / "distilled" / f"{experience_id}.json"
+    if destination.exists():
+        return {**json_read(destination), "already_imported": True}
+
+    event = record.get("engineering_event", {}) if isinstance(record.get("engineering_event"), dict) else {}
+    messages: list[dict[str, Any]] = []
+    for role, field in (
+        ("user", "reported_behavior"),
+        ("assistant", "observed_cause"),
+        ("assistant", "correction_or_outcome"),
+        ("tool", "validation"),
+    ):
+        content = str(event.get(field, "")).strip()
+        if content:
+            messages.append(message(role, content, len(messages), {"memory_experience_id": experience_id, "field": field}))
+    learning = str(record.get("learning_signal", "")).strip()
+    if learning:
+        messages.append(message("system", f"Structured learning signal: {learning}", len(messages), {"memory_experience_id": experience_id, "field": "learning_signal"}))
+    if not messages:
+        messages.append(message("unknown", json.dumps(record, ensure_ascii=False), 0, {"memory_experience_id": experience_id}))
+    source_hash = str(record.get("content_sha256") or digest_bytes(json.dumps(record, sort_keys=True, ensure_ascii=False).encode()))
+    normalized = {
+        "schema_version": 1,
+        "conversation_id": experience_id,
+        "created_at": record.get("created_at", utc_now()),
+        "source": {
+            "kind": "local_memory",
+            "original_path": retrieved["memory_path"],
+            "stored_path": retrieved["memory_path"],
+            "sha256": source_hash,
+            "parser": "structured_metric_experience",
+            "warnings": retrieved["warnings"],
+        },
+        "metadata": {
+            "skill_name": record.get("skill_name"),
+            "session_id": record.get("session_id"),
+            "metric_slug": record.get("metric_slug"),
+            "metric_family": record.get("metric_family"),
+            "event_type": record.get("event_type"),
+            "scope": record.get("scope", {}),
+            "confidence": record.get("confidence"),
+            "pattern_keys": record.get("pattern_keys", []),
+            "tags": record.get("tags", []),
+            "evidence": record.get("evidence", []),
+            "source_artifacts": record.get("source_artifacts", []),
+            "why_useful": record.get("why_useful", ""),
+        },
+        "messages": messages,
+    }
+    write_new_json(destination, normalized)
+    append_event("memory_experience_imported", experience_id=experience_id, target=target_name)
+    return normalized
 
 
 def target_candidates(entry: dict[str, Any]) -> list[Path]:
@@ -782,6 +924,10 @@ def status() -> dict[str, Any]:
         "rejected_proposals": count("proposals/rejected/*.json"),
         "validation_runs": count("regressions/runs/*.json"), "scenario_cards": count("regressions/scenarios/*.json"),
         "pending_evaluations": len(pending_evaluation_manifests), "completed_evaluations": count("evaluations/completed/*.results.json"),
+        "experience_memory": {
+            key: value for key, value in retrieve_memory(target_name, limit=1).items()
+            if key != "experiences"
+        },
         "next_actions": next_actions,
     }
 
@@ -791,6 +937,13 @@ def parser() -> argparse.ArgumentParser:
     sub = result.add_subparsers(dest="command", required=True)
     ingest_p = sub.add_parser("ingest", help="Copy and normalize a conversation file; use - for stdin")
     ingest_p.add_argument("input")
+    memory_p = sub.add_parser("memory", help="Retrieve or import accumulated Metric Forge experiences")
+    memory_sub = memory_p.add_subparsers(dest="memory_command", required=True)
+    memory_retrieve = memory_sub.add_parser("retrieve", help="List target-scoped structured experiences")
+    memory_retrieve.add_argument("--query", default="")
+    memory_retrieve.add_argument("--limit", type=int, default=50)
+    memory_import = memory_sub.add_parser("import", help="Import one memory record into the evolution ledger")
+    memory_import.add_argument("experience_id")
     lesson_p = sub.add_parser("lesson", help="Store an agent-authored candidate lesson")
     lesson_p.add_argument("experience_id"); lesson_p.add_argument("--from", dest="source", type=Path, required=True)
     stage_p = sub.add_parser("stage", help="Stage a candidate SKILL.md without changing the target")
@@ -818,6 +971,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
         if args.command == "ingest": output = ingest(args.input)
+        elif args.command == "memory":
+            output = retrieve_memory(query=args.query, limit=args.limit) if args.memory_command == "retrieve" else import_memory_experience(args.experience_id)
         elif args.command == "lesson": output = store_lesson(args.experience_id, args.source)
         elif args.command == "stage": output = stage(args.lesson_id, args.candidate)
         elif args.command == "validate": output = validate(args.proposal_id, args.assessment)

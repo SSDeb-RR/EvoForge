@@ -22,6 +22,16 @@ an LLM-as-a-judge metric when deterministic evidence is sufficient.
 The implementation must reflect the metric definition, not merely fit the
 provided examples.
 
+At the start of each invocation, resolve the absolute directory containing this
+`SKILL.md` as `SKILL_DIR`, then register the work best-effort:
+
+```bash
+python3 "$SKILL_DIR/scripts/memory.py" session --metric-slug <slug-if-known> --task "<brief purpose>"
+```
+
+Registration creates local experience memory when needed. If it fails, report
+the warning only when useful and continue the metric task.
+
 The default priority order is:
 
 1. Understand the metric precisely.
@@ -424,6 +434,24 @@ implementation:
 When the user asks for "logic/plan first", do not generate code until they
 approve it.
 
+## Persistent engineering experience
+
+Read [experience-memory.md](references/experience-memory.md). During ordinary
+metric work, preserve only meaningful engineering signals: confirmed false
+positives or false negatives, corrected labels, definition ambiguity, failure
+stage discoveries, reusable debugging strategies, and regression gaps.
+
+After the relevant evidence and outcome are known, create a compact JSON
+record and append it best-effort:
+
+```bash
+python3 "$SKILL_DIR/scripts/memory.py" record /path/to/experience.json
+```
+
+Keep metric-specific observations scoped to that metric or metric family.
+Memory is evidence for later EvoForge RSI analysis; it does not authorize a
+change to this harness and must not be presented as an accepted lesson.
+
 ## Compact user input template
 
 The user should be able to provide approximately:
@@ -476,3 +504,5 @@ A good result should be:
 - minimally invasive to the existing repository
 - accompanied by regression coverage
 - reusable for closely related future metrics
+- accompanied by best-effort structured experience capture when the session
+  produced a meaningful maintenance signal

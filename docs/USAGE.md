@@ -13,22 +13,36 @@ this conversational evaluator deterministically, and add regression coverage.
 It prioritizes deterministic event/state logic, role-aware context, corrected
 ground truth, and regression suites over an LLM judge.
 
-## 2. Trigger reflection deliberately
+At invocation, Metric Forge registers a local session. When the work reveals a
+meaningful false positive/negative mechanism, label correction, definition
+ambiguity, reusable debugging method, or regression gap, it appends a compact
+structured experience. Routine turns and ordinary success are not retained.
 
-When the work conversation contains a possible reusable insight, supply it in
-whatever reasonable form you have—pasted chat, Markdown, JSON export, plain
-text, or a transcript file:
+Inspect accumulated experience with:
 
-```text
-Use $skill-evolution to analyze this conversation for a reusable improvement to
-the deterministic evaluator-engineering harness. Create and validate any
-justified proposal, show review artifacts, and stop before deployment.
+```bash
+cd ~/.codex/skills/deterministic-metric-engineering
+python3 scripts/memory.py status
 ```
 
-The harness normalizes the input, reads Metric Forge and local history, then
-records an evidence-linked lesson. It may conclude `do_not_evolve`; that is a
-useful result when the issue belongs in an individual evaluator, a definition,
-data, tooling, or execution discipline.
+## 2. Trigger reflection deliberately
+
+When accumulated work or a specific conversation contains a possible reusable
+insight, invoke EvoForge RSI. You may also supply pasted chat, Markdown, JSON,
+plain text, or a transcript file:
+
+```text
+Use $skill-evolution to analyze accumulated Metric Forge experiences and this
+conversation, if supplied, for a reusable improvement to the deterministic
+evaluator-engineering harness. Create and validate any justified proposal, show
+review artifacts, and stop before deployment.
+```
+
+The harness retrieves relevant target memory, optionally normalizes the supplied
+session, reads Metric Forge and evolution history, then records an
+evidence-linked lesson. It preserves metric scope and may conclude
+`do_not_evolve`; that is useful when the issue belongs in an individual
+evaluator, a definition, data, tooling, or execution discipline.
 
 ## 3. Review a staged proposal
 

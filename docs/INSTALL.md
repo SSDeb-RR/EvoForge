@@ -76,9 +76,15 @@ Use the PowerShell form in the interoperability guide on Windows.
 Run the helper tests after installing or updating EvoForge RSI:
 
 ```bash
+cd ../deterministic-metric-engineering
+python3 scripts/test_memory.py
+python3 scripts/memory.py status
+cd ../skill-evolution
 python scripts/test_evolve.py
 python scripts/evolve.py status
 ```
 
 Do not copy a public repository's `evolution/` ledger over an existing local
-ledger. This repository ships only an empty ledger skeleton.
+ledger. This repository ships only an empty ledger skeleton. Metric Forge
+experience memory remains under `~/.evoforge/memory/` unless
+`EVOFORGE_MEMORY_DIR` selects another root.

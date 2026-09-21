@@ -2,9 +2,11 @@
 
 ## 1. Ingest and establish the baseline
 
-Run `ingest` on the source file. For pasted content, place the exact text in a
-temporary file first. Inspect the stored raw copy and normalized JSON. Treat
-parser warnings as uncertainty, not evidence.
+Begin with `memory retrieve` to inspect target-scoped Metric Forge experiences.
+Import the bounded records relevant to the mechanism under review. When a
+source conversation is supplied, run `ingest`; for pasted content, place the
+exact text in a temporary file first. Inspect stored evidence and treat parser
+or memory warnings as uncertainty, not evidence.
 
 Before analysis, read:
 

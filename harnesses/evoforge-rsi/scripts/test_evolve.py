@@ -46,12 +46,17 @@ class LifecycleTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.data = self.root / "data"
+        self.memory = self.root / "memory"
         self.target = self.root / "target"
         self.target.mkdir()
         (self.target / "SKILL.md").write_text("---\nname: demo\ndescription: >\n  Demo.\n---\n\n# Demo\n\nOld.\n", encoding="utf-8")
         (self.data).mkdir()
         (self.data / "targets.yaml").write_text(json.dumps({"default_target": "demo", "targets": {"demo": {"path": str(self.target), "skill_file": "SKILL.md"}}}), encoding="utf-8")
-        self.patchers = [mock.patch.object(evolve, "DATA_DIR", self.data), mock.patch.object(evolve, "TARGETS_FILE", self.data / "targets.yaml")]
+        self.patchers = [
+            mock.patch.object(evolve, "DATA_DIR", self.data),
+            mock.patch.object(evolve, "TARGETS_FILE", self.data / "targets.yaml"),
+            mock.patch.object(evolve, "MEMORY_ROOT", self.memory),
+        ]
         for patcher in self.patchers: patcher.start()
         evolve.ensure_layout()
 
@@ -66,6 +71,62 @@ class LifecycleTests(unittest.TestCase):
         with self.assertRaises(evolve.EvolutionError):
             evolve.ingest(str(source))
         self.assertEqual(len(first["messages"]), 2)
+
+    def test_empty_memory_is_safe(self):
+        result = evolve.retrieve_memory("demo", memory_root=self.memory)
+        self.assertFalse(result["available"])
+        self.assertEqual(result["experiences"], [])
+
+    def test_metric_memory_retrieval_groups_patterns_and_reports_damage(self):
+        skill_memory = self.memory / "demo"
+        skill_memory.mkdir(parents=True)
+        rows = [
+            {
+                "experience_id": "memexp-1", "skill_name": "demo",
+                "created_at": "2026-01-01T00:00:00Z", "event_type": "state_transition_gap",
+                "learning_signal": "Later acceptance should supersede prior state",
+                "scope": {"kind": "metric", "subject_id": "metric-a"},
+                "pattern_keys": ["state-supersession"], "content_sha256": "a" * 64,
+            },
+            {
+                "experience_id": "memexp-2", "skill_name": "demo",
+                "created_at": "2026-01-02T00:00:00Z", "event_type": "false_positive",
+                "learning_signal": "A second state supersession failure",
+                "scope": {"kind": "metric_family", "subject_id": "conversation-state"},
+                "pattern_keys": ["state-supersession"], "content_sha256": "b" * 64,
+            },
+        ]
+        (skill_memory / "experiences.jsonl").write_text(
+            "\n".join(json.dumps(row) for row in rows) + "\n{broken\n", encoding="utf-8"
+        )
+        result = evolve.retrieve_memory("demo", "supersession", memory_root=self.memory)
+        self.assertEqual(result["returned_count"], 2)
+        self.assertEqual(result["recurring_patterns"][0]["count"], 2)
+        self.assertEqual(result["event_type_counts"]["false_positive"], 1)
+        self.assertTrue(result["warnings"])
+
+    def test_metric_memory_import_preserves_engineering_metadata(self):
+        skill_memory = self.memory / "demo"
+        skill_memory.mkdir(parents=True)
+        row = {
+            "experience_id": "memexp-import", "skill_name": "demo",
+            "created_at": "2026-01-01T00:00:00Z", "metric_slug": "metric-a",
+            "metric_family": "conversation-state", "event_type": "state_transition_gap",
+            "engineering_event": {
+                "reported_behavior": "false positive", "observed_cause": "stale state",
+                "correction_or_outcome": "acceptance supersedes it", "validation": "regressions passed",
+            },
+            "learning_signal": "Possible reusable state rule",
+            "scope": {"kind": "metric", "subject_id": "metric-a"},
+            "confidence": "medium", "pattern_keys": ["state-supersession"],
+            "content_sha256": "c" * 64,
+        }
+        (skill_memory / "experiences.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+        imported = evolve.import_memory_experience("memexp-import", self.memory)
+        self.assertEqual(imported["source"]["kind"], "local_memory")
+        self.assertEqual(imported["metadata"]["metric_slug"], "metric-a")
+        self.assertEqual(imported["metadata"]["event_type"], "state_transition_gap")
+        self.assertTrue((self.data / "experiences" / "distilled" / "memexp-import.json").is_file())
 
     def _stage(self):
         source = self.root / "chat.txt"

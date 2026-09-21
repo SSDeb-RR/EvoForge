@@ -7,8 +7,8 @@ evaluators for conversational and voice-agent systems. It pairs two harnesses:
 
 | Harness | Purpose |
 |---|---|
-| **Metric Forge** | Converts metric definitions, transcripts, labels, code, and tests into deterministic Python evaluators with regression coverage. |
-| **EvoForge RSI** | Extracts reusable engineering lessons from selected agent-session transcripts and evolves Metric Forge through validation-gated, human-approved deltas. |
+| **Metric Forge** | Converts metric definitions, transcripts, labels, code, and tests into deterministic Python evaluators with regression coverage, while selectively accumulating structured engineering experience. |
+| **EvoForge RSI** | Extracts reusable engineering lessons from accumulated experiences or supplied agent-session transcripts and evolves Metric Forge through validation-gated, human-approved deltas. |
 
 ## Motivation
 
@@ -27,7 +27,7 @@ Metric definition + transcripts + implementation
         ↓
 Metric Forge → deterministic evaluator + evidence + regressions
         ↓
-Selected engineering-session transcript
+Structured local experiences and/or selected engineering-session transcript
         ↓
 EvoForge RSI → lesson → staged delta → A/B validation → explicit approval
 ```
@@ -43,6 +43,8 @@ EvoForge RSI → lesson → staged delta → A/B validation → explicit approva
   acceptance, confirmation, and non-applicable cases.
 - Produces structured evidence with the production result.
 - Builds regression suites from all supplied calls plus targeted edge cases.
+- Preserves selected false-positive/negative analyses, label corrections,
+  failure-stage discoveries, and regression insights as local structured memory.
 - Supports multilingual conversational evidence when the data requires it,
   including English, Hindi, and Hinglish variants.
 
@@ -50,6 +52,8 @@ EvoForge RSI → lesson → staged delta → A/B validation → explicit approva
 
 - Ingests JSON, Markdown, plain text, pasted chat, transcript files, and
   partially structured session exports.
+- Retrieves and imports accumulated Metric Forge experiences without requiring
+  users to manually reconstruct earlier engineering sessions.
 - Preserves raw hashes, normalized message locators, lessons, proposal diffs,
   validation records, snapshots, and append-only lineage.
 - Attributes a failure before evolving: target-harness deficiency, execution
@@ -128,13 +132,31 @@ this conversational metric deterministically, preserve the output contract, and
 add regression coverage from all supplied calls plus targeted edge cases.
 ```
 
+Metric Forge registers each invocation and appends only meaningful engineering
+signals best-effort. Inspect this local memory with:
+
+```bash
+cd ~/.codex/skills/deterministic-metric-engineering
+python3 scripts/memory.py status
+```
+
+For Claude Code, use the corresponding path under `~/.claude/skills/`.
+
+The default root is `~/.evoforge/memory/deterministic-metric-engineering/`.
+Set `EVOFORGE_MEMORY_DIR` to choose a different local root.
+
 Evolve the reusable evaluator-engineering harness:
 
 ```text
-Use $skill-evolution to analyze this agent-session transcript for a reusable
-improvement to the deterministic evaluator-engineering harness. Create and
-validate any justified proposal, show review artifacts, and stop before deployment.
+Use $skill-evolution to analyze accumulated Metric Forge experiences and this
+agent-session transcript, if supplied, for a reusable improvement to the
+deterministic evaluator-engineering harness. Create and validate any justified
+proposal, show review artifacts, and stop before deployment.
 ```
+
+EvoForge RSI first retrieves target-scoped memory, preserves metric and
+metric-family boundaries, and then reuses the existing experience → lesson →
+proposal → validation workflow. Memory never triggers evolution on its own.
 
 Artifacts remain local under `evolution/`: raw/normalized sessions, lessons,
 pending/accepted/rejected proposals, A/B evaluations, regression records,
@@ -146,7 +168,7 @@ the current state and the next required user action.
 | Dimension | EvoForge | SkillOpt | SkillOps |
 |---|---|---|---|
 | Target | Deterministic conversational evaluator engineering | General text-space skill optimization | Skill-library operations and lifecycle management |
-| Evidence | Human-selected real engineering sessions | Scored rollouts and benchmark splits | Contracts, validators, artifacts, thresholds |
+| Evidence | Accumulated structured engineering experience plus human-selected sessions | Scored rollouts and benchmark splits | Contracts, validators, artifacts, thresholds |
 | Generalization | Cause attribution, novelty search, bounded lesson | Optimizer reflection and bounded edit selection | Typed contracts and maintenance actions |
 | Promotion | Fresh A/B validation plus explicit human approval | Held-out validation/selection | Versioned, threshold-gated lifecycle |
 | Runtime posture | Local and manually triggered | Research optimizer / optional session review | Broader control-loop framework |
@@ -170,16 +192,17 @@ process-level adaptation (improve the reusable engineering harness). Every
 accepted change is traceable:
 
 ```text
-session evidence → experience event → attribution → lesson
+structured experience or session evidence → experience event → attribution → lesson
 → proposal → validation → applied successor
 ```
 
 ## Privacy and publication
 
-Publish only an empty `evolution/` skeleton. Session exports, lessons,
-proposals, evaluator outputs, snapshots, and history are local operational data
-and should be ignored by Git. Choose a license and review the package for
-private transcripts, credentials, and local paths before release.
+Publish only an empty `evolution/` skeleton. Metric Forge memory lives outside
+the repository under `~/.evoforge/` by default. Session exports, experiences,
+lessons, proposals, evaluator outputs, snapshots, and history are local
+operational data and should never be committed. Choose a license and review the
+package for private transcripts, credentials, and local paths before release.
 
 ## References
 
